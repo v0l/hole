@@ -37,12 +37,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "allocator-api2"
-version = "0.2.21"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "683d7910e743518b0e34f1186f92494becacb047c7b6bf616c96772180fef923"
-
-[[package]]
 name = "android-tzdata"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -96,9 +90,9 @@ dependencies = [
 
 [[package]]
 name = "async-utility"
-version = "0.2.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a349201d80b4aa18d17a34a182bdd7f8ddf845e9e57d2ea130a12e10ef1e3a47"
+checksum = "a34a3b57207a7a1007832416c3e4862378c8451b4e8e093e436f48c2d3d2c151"
 dependencies = [
  "futures-util",
  "gloo-timers",
@@ -108,9 +102,8 @@ dependencies = [
 
 [[package]]
 name = "async-wsocket"
-version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d50cb541e6d09e119e717c64c46ed33f49be7fa592fa805d56c11d6a7ff093c"
+version = "0.11.0"
+source = "git+https://github.com/yukibtc/async-wsocket?rev=27f606af6b2028634022a97b5e56c332dfe3f611#27f606af6b2028634022a97b5e56c332dfe3f611"
 dependencies = [
  "async-utility",
  "futures",
@@ -126,12 +119,9 @@ dependencies = [
 
 [[package]]
 name = "atomic-destructor"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d919cb60ba95c87ba42777e9e246c4e8d658057299b437b7512531ce0a09a23"
-dependencies = [
- "tracing",
-]
+checksum = "ef49f5882e4b6afaac09ad239a4f8c70a24b8f2b0897edb1f706008efd109cf4"
 
 [[package]]
 name = "autocfg"
@@ -499,12 +489,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
-name = "foldhash"
-version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f81ec6369c545a7d40e4589b5597581fa1c441fe1cce96dd1de43159910a36a2"
-
-[[package]]
 name = "form_urlencoded"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -628,9 +612,9 @@ checksum = "07e28edb80900c19c28f1072f2e8aeca7fa06b23cd4169cefe1af5aa3260783f"
 
 [[package]]
 name = "gloo-timers"
-version = "0.2.6"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9b995a66bb87bebce9a0f4a95aed01daca4872c050bfcb21653361c03bc35e5c"
+checksum = "bbb143cf96099802033e0d4f4963b19fd2e0b728bcf076cd9cf7f6634f092994"
 dependencies = [
  "futures-channel",
  "futures-core",
@@ -662,11 +646,6 @@ name = "hashbrown"
 version = "0.15.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bf151400ff0baff5465007dd2f3e717f3fe502074ca563069ce3a6629d07b289"
-dependencies = [
- "allocator-api2",
- "equivalent",
- "foldhash",
-]
 
 [[package]]
 name = "headers"
@@ -1062,15 +1041,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a7a70ba024b9dc04c27ea2f0c0548feb474ec5c54bba33a7f72f873a39d07b24"
 
 [[package]]
-name = "lru"
-version = "0.12.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "234cf4f4a04dc1f57e24b96cc0cd600cf2af460d4161ac5ecdd0af8e1f3b2a38"
-dependencies = [
- "hashbrown",
-]
-
-[[package]]
 name = "memchr"
 version = "2.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1144,8 +1114,8 @@ checksum = "43a88da9dd148bbcdce323dd6ac47d369b4769d4a3b78c6c52389b9269f77932"
 
 [[package]]
 name = "nostr"
-version = "0.36.0"
-source = "git+https://github.com/v0l/nostr-sdk.git?branch=master#20b2d529c50698f848f04b8f9c3fd162f9422f0e"
+version = "0.37.0"
+source = "git+https://git.v0l.io/nostr/rust-nostr.git?rev=f21ffbd2de4e9ad87cd8345158039754cee05031#f21ffbd2de4e9ad87cd8345158039754cee05031"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
@@ -1169,25 +1139,23 @@ dependencies = [
 
 [[package]]
 name = "nostr-database"
-version = "0.36.0"
-source = "git+https://github.com/v0l/nostr-sdk.git?branch=master#20b2d529c50698f848f04b8f9c3fd162f9422f0e"
+version = "0.37.0"
+source = "git+https://git.v0l.io/nostr/rust-nostr.git?rev=f21ffbd2de4e9ad87cd8345158039754cee05031#f21ffbd2de4e9ad87cd8345158039754cee05031"
 dependencies = [
  "async-trait",
- "lru",
  "nostr",
- "thiserror",
  "tokio",
- "tracing",
 ]
 
 [[package]]
 name = "nostr-relay-builder"
-version = "0.36.0"
-source = "git+https://github.com/v0l/nostr-sdk.git?branch=master#20b2d529c50698f848f04b8f9c3fd162f9422f0e"
+version = "0.37.0"
+source = "git+https://git.v0l.io/nostr/rust-nostr.git?rev=f21ffbd2de4e9ad87cd8345158039754cee05031#f21ffbd2de4e9ad87cd8345158039754cee05031"
 dependencies = [
  "async-utility",
  "async-wsocket",
  "atomic-destructor",
+ "negentropy 0.4.3",
  "nostr",
  "nostr-database",
  "thiserror",
@@ -1868,19 +1836,7 @@ checksum = "784e0ac535deb450455cbfa28a6f0df145ea1bb7ae51b821cf5e7927fdcfbdd0"
 dependencies = [
  "log",
  "pin-project-lite",
- "tracing-attributes",
  "tracing-core",
-]
-
-[[package]]
-name = "tracing-attributes"
-version = "0.1.28"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "395ae124c09f9e6918a2310af6038fba074bcf474ac352496d5910dd59a2226d"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]

@@ -1,12 +1,14 @@
 use anyhow::Result;
 use async_compression::tokio::write::ZstdEncoder;
-use chrono::{DateTime, NaiveDate, NaiveDateTime, Utc};
+use chrono::{DateTime, Utc};
 use log::{error, info};
 use nostr_relay_builder::builder::{PolicyResult, QueryPolicy, RateLimit};
-use nostr_relay_builder::prelude::Filter as RelayFilter;
 use nostr_relay_builder::prelude::{
     async_trait, Backend, Coordinate, DatabaseError, DatabaseEventStatus, Event, EventId, Events,
-    JsonUtil, NostrDatabase, Timestamp, Url,
+    JsonUtil, NostrDatabase, RejectedReason, Timestamp,
+};
+use nostr_relay_builder::prelude::{
+    Filter as RelayFilter, NostrEventsDatabase, RelayUrl, SaveEventStatus,
 };
 use nostr_relay_builder::{LocalRelay, RelayBuilder};
 use std::collections::HashSet;
@@ -14,15 +16,12 @@ use std::fmt::{Debug, Formatter};
 use std::fs::create_dir_all;
 use std::io::{Error, ErrorKind};
 use std::net::{IpAddr, SocketAddr};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::fs::{File, OpenOptions};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::TcpListener;
 use tokio::sync::Mutex;
-use tokio::time::sleep;
-use warp::reply::{html, Html};
+use warp::reply::html;
 use warp::Filter;
 
 #[derive(Debug)]
@@ -30,7 +29,7 @@ struct NoQuery;
 
 #[async_trait]
 impl QueryPolicy for NoQuery {
-    async fn admit_query(&self, _query: &Vec<RelayFilter>, _addr: &SocketAddr) -> PolicyResult {
+    async fn admit_query(&self, _query: &[RelayFilter], _addr: &SocketAddr) -> PolicyResult {
         PolicyResult::Reject("queries not allowed".to_string())
     }
 }
@@ -150,12 +149,8 @@ impl FlatFileDatabase {
 }
 
 #[async_trait]
-impl NostrDatabase for FlatFileDatabase {
-    fn backend(&self) -> Backend {
-        Backend::Custom("FlatFileDatabase".to_string())
-    }
-
-    async fn save_event(&self, event: &Event) -> Result<bool, DatabaseError> {
+impl NostrEventsDatabase for FlatFileDatabase {
+    async fn save_event(&self, event: &Event) -> Result<SaveEventStatus, DatabaseError> {
         match self.check_id(&event.id).await? {
             DatabaseEventStatus::NotExistent => {
                 self.database
@@ -165,9 +160,9 @@ impl NostrDatabase for FlatFileDatabase {
                 self.write_event(event).await.map_err(|e| {
                     DatabaseError::Backend(Box::new(Error::new(ErrorKind::Other, e)))
                 })?;
-                Ok(true)
+                Ok(SaveEventStatus::Success)
             }
-            _ => Ok(false),
+            _ => Ok(SaveEventStatus::Rejected(RejectedReason::Duplicate)),
         }
     }
 
@@ -191,14 +186,18 @@ impl NostrDatabase for FlatFileDatabase {
         Ok(false)
     }
 
-    async fn event_id_seen(&self, event_id: EventId, relay_url: Url) -> Result<(), DatabaseError> {
+    async fn event_id_seen(
+        &self,
+        event_id: EventId,
+        relay_url: RelayUrl,
+    ) -> Result<(), DatabaseError> {
         Ok(())
     }
 
     async fn event_seen_on_relays(
         &self,
         event_id: &EventId,
-    ) -> Result<Option<HashSet<Url>>, DatabaseError> {
+    ) -> Result<Option<HashSet<RelayUrl>>, DatabaseError> {
         Ok(None)
     }
 
@@ -216,6 +215,13 @@ impl NostrDatabase for FlatFileDatabase {
 
     async fn delete(&self, filter: RelayFilter) -> Result<(), DatabaseError> {
         Ok(())
+    }
+}
+
+#[async_trait]
+impl NostrDatabase for FlatFileDatabase {
+    fn backend(&self) -> Backend {
+        Backend::Custom("FlatFileDatabase".to_string())
     }
 
     async fn wipe(&self) -> Result<(), DatabaseError> {

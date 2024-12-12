@@ -8,7 +8,7 @@ anyhow = "1.0.94"
 async-compression = { version = "0.4.18", features = ["tokio", "zstd"] }
 chrono = "0.4.39"
 log = "0.4.22"
-nostr-relay-builder = { git = "https://github.com/v0l/nostr-sdk.git", branch = "master" }
+nostr-relay-builder = { git = "https://git.v0l.io/nostr/rust-nostr.git", rev = "f21ffbd2de4e9ad87cd8345158039754cee05031" }
 pretty_env_logger = "0.5.0"
 sled = "0.34.7"
 tokio = { version = "1.42.0", features = ["macros", "fs", "rt", "rt-multi-thread", "signal"] }
