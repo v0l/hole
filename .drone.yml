@@ -1,0 +1,19 @@
+kind: pipeline
+type: kubernetes
+name: default
+
+metadata:
+  namespace: git
+
+steps:
+  - name: build
+    image: docker
+    privileged: true
+    environment:
+      TOKEN:
+        from_secret: docker_hub
+    commands:
+      - dockerd &
+      - docker login -u voidic -p $TOKEN
+      - docker buildx build --push -t voidic/nostrhole .
+      - kill $(cat /var/run/docker.pid)
