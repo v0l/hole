@@ -360,7 +360,9 @@ async fn main() -> Result<()> {
 
     let addr: SocketAddr = "0.0.0.0:8000".parse()?;
     let (addr, fut) = warp::serve(f).bind_with_graceful_shutdown(addr, async move {
-        tokio::signal::ctrl_c()
+        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+            .unwrap()
+            .recv()
             .await
             .expect("failed to listen to shutdown signal");
     });
