@@ -1,0 +1,14 @@
+# Listen address for relay
+listen_relay: "0.0.0.0:8001"
+
+# Relays to connect and stream events from
+relays:
+  - "wss://relay.damus.io"
+  - "wss://nos.lol"
+  - "wss://relay.snort.social"
+  - "wss://nostr.bg"
+  - "wss://relay.primal.net"
+  - "wss://relay.nostr.band"
+
+# Filter event kinds to store in archives
+# kinds: [0,1,3,10002]
