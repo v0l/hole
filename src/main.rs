@@ -65,18 +65,18 @@ impl FlatFileWriter {
     async fn compress_file(file: PathBuf) -> Result<()> {
         let out_path = file.with_extension("jsonl.zstd");
         let mut in_file = File::open(file.clone()).await?;
-        let out_file = File::create(out_path.clone()).await?;
-        let mut enc = ZstdEncoder::new(out_file);
-
-        let mut buf: [u8; 1024] = [0; 1024];
-        while let Ok(n) = in_file.read(&mut buf).await {
-            if n == 0 {
-                break;
+        {
+            let out_file = File::create(out_path.clone()).await?;
+            let mut enc = ZstdEncoder::new(out_file);
+            let mut buf: [u8; 1024] = [0; 1024];
+            while let Ok(n) = in_file.read(&mut buf).await {
+                if n == 0 {
+                    break;
+                }
+                enc.write_all(&buf[..n]).await?;
             }
-            enc.write_all(&buf[..n]).await?;
+            enc.shutdown().await?;
         }
-        enc.flush().await?;
-        drop(enc);
 
         let in_size = in_file.metadata().await?.len();
         let out_size = File::open(out_path).await?.metadata().await?.len();
