@@ -19,8 +19,8 @@ hyper-util = { version = "0.1", features = ["tokio"] }
 base64 = "0.22.1"
 itertools = "0.14.0"
 
-nostr-relay-builder = { git = "https://github.com/rust-nostr/nostr.git", rev = "b5b6c0d422ad3f99d479768bbb011ac7a7cc68f0", package = "nostr-relay-builder" }
-nostr-sdk = { git = "https://github.com/rust-nostr/nostr.git", rev = "b5b6c0d422ad3f99d479768bbb011ac7a7cc68f0", package = "nostr-sdk" }
-nostr = { git = "https://github.com/rust-nostr/nostr.git", rev = "b5b6c0d422ad3f99d479768bbb011ac7a7cc68f0", package = "nostr" }
+nostr-relay-builder = { git = "https://git.v0l.io/nostr/rust-nostr.git", rev = "b5b6c0d422ad3f99d479768bbb011ac7a7cc68f0", package = "nostr-relay-builder" }
+nostr-sdk = { git = "https://git.v0l.io/nostr/rust-nostr.git", rev = "b5b6c0d422ad3f99d479768bbb011ac7a7cc68f0", package = "nostr-sdk" }
+nostr = { git = "https://git.v0l.io/nostr/rust-nostr.git", rev = "b5b6c0d422ad3f99d479768bbb011ac7a7cc68f0", package = "nostr" }
 http-body-util = "0.1.2"
 tokio-util = { version = "0.7.13", features = ["io"] }
