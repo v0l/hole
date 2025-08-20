@@ -10,8 +10,8 @@ use log::{error, info};
 use nostr_relay_builder::builder::RateLimit;
 use nostr_relay_builder::prelude::Kind;
 use nostr_relay_builder::{LocalRelay, RelayBuilder};
-use nostr_sdk::prelude::NostrDatabase;
-use nostr_sdk::{Client, Filter, RelayPoolNotification};
+use nostr_sdk::prelude::{NostrDatabase, SyncProgress};
+use nostr_sdk::{Client, Filter, RelayPoolNotification, SyncOptions};
 use serde::Deserialize;
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -41,6 +41,9 @@ struct Settings {
 
     /// Nostr kinds to accept
     pub kinds: Option<Vec<u32>>,
+
+    /// Do sync at startup to find missing events
+    pub sync: Option<bool>,
 }
 
 #[tokio::main]
@@ -65,20 +68,28 @@ async fn main() -> Result<()> {
     let db = FlatFileDatabase::new(out_dir.clone())?;
     let client = Client::builder().database(db.clone()).build();
     if let Some(r) = config.relays {
-        for r in r {
+        for r in &r {
             client.add_relay(r).await?;
         }
         client.connect().await;
-        let client = client.clone();
-        let db = db.clone();
+
+        let mut filter_base = Filter::default();
+        if let Some(k) = &config.kinds {
+            filter_base = filter_base.kinds(k.iter().map(|v| Kind::Custom(*v as u16)))
+        }
+
+        // spawn main ingester
+        let client_sub = client.clone();
+        let db_sub = db.clone();
+        let filter_sub = filter_base.clone();
         let _: JoinHandle<Result<()>> = tokio::spawn(async move {
-            let mut rx = client.notifications();
-            client.subscribe(Filter::new().limit(100), None).await?;
+            let mut rx = client_sub.notifications();
+            client_sub.subscribe(filter_sub.limit(100), None).await?;
             loop {
                 match rx.recv().await {
                     Ok(e) => match e {
                         RelayPoolNotification::Event { event, .. } => {
-                            if let Err(e) = db.save_event(&event).await {
+                            if let Err(e) = db_sub.save_event(&event).await {
                                 error!("Failed to save event: {}", e);
                             }
                         }
@@ -96,6 +107,37 @@ async fn main() -> Result<()> {
             error!("Read loop exited!");
             Ok(())
         });
+
+        // spawn sync job
+        if config.sync.unwrap_or(false) {
+            let client_sync = client.clone();
+            let db_sync = db.clone();
+            tokio::spawn(async move {
+                let (tx, mut rx) = SyncProgress::channel();
+                tokio::spawn(async move {
+                    while let Ok(_) = rx.changed().await {
+                        let p = rx.borrow();
+                        info!(
+                            "Sync progress: {}/{} {:.2}%",
+                            p.current,
+                            p.total,
+                            100.0 * (p.current as f64 / p.total as f64)
+                        );
+                    }
+                });
+                let opts = SyncOptions::default().progress(tx);
+                let ids = db_sync.list_ids();
+                let targets = client_sync
+                    .relays()
+                    .await
+                    .into_iter()
+                    .map(|r| (r.0, (filter_base.clone(), ids.clone())));
+                if let Err(e) = client_sync.pool().sync_targeted(targets, &opts).await {
+                    error!("Failed to sync: {}", e);
+                }
+                info!("Sync complete!");
+            });
+        }
     }
 
     let mut builder = RelayBuilder::default()

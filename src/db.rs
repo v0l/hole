@@ -1,5 +1,5 @@
 use crate::writer::FlatFileWriter;
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use chrono::{DateTime, Utc};
 use log::debug;
 use nostr_relay_builder::prelude::BoxedFuture;
@@ -7,7 +7,7 @@ use nostr_sdk::prelude::{
     Backend, DatabaseError, DatabaseEventStatus, Events, NostrDatabase, RejectedReason,
     SaveEventStatus,
 };
-use nostr_sdk::{Event, EventId, Filter};
+use nostr_sdk::{Event, EventId, Filter, Timestamp};
 use std::fmt::{Debug, Formatter};
 use std::fs::create_dir_all;
 use std::io::{Error, ErrorKind};
@@ -86,6 +86,26 @@ impl FlatFileDatabase {
             Err(anyhow!("No such file or directory"))
         }
     }
+
+    /// List key/value pairs from the index database (for sync)
+    pub fn list_ids(&self) -> Vec<(EventId, Timestamp)> {
+        self.database
+            .iter()
+            .map_while(|x| {
+                if let Ok((k, v)) = x {
+                    let v_slice = v.iter().as_slice();
+                    let timestamp = if v_slice.len() != 8 {
+                        Timestamp::from_secs(0)
+                    } else {
+                        Timestamp::from_secs(u64::from_le_bytes(v_slice.try_into().ok()?))
+                    };
+                    Some((EventId::from_slice(&k).ok()?, timestamp))
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
 }
 
 impl NostrDatabase for FlatFileDatabase {
@@ -101,7 +121,7 @@ impl NostrDatabase for FlatFileDatabase {
             match self.check_id(&event.id).await? {
                 DatabaseEventStatus::NotExistent => {
                     self.database
-                        .insert(event.id, &[])
+                        .insert(event.id, &event.created_at.as_u64().to_le_bytes())
                         .map_err(|e| DatabaseError::Backend(Box::new(e)))?;
 
                     self.write_event(event).await.map_err(|e| {
