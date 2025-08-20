@@ -15,6 +15,7 @@ use std::future::Future;
 use std::net::SocketAddr;
 use std::pin::Pin;
 use std::task::{Context, Poll};
+use thousands::Separable;
 use tokio::fs::File;
 use tokio_util::io::ReaderStream;
 
@@ -143,7 +144,10 @@ impl Service<Request<Incoming>> for HttpServer {
                     .status(200)
                     .header("content-type", "text/html")
                     .body(Either::Left(
-                        template.replace("%%_LINKS_%%", &files.join("\n")),
+                        template.replace("%%_LINKS_%%", &files.join("\n")).replace(
+                            "%%_TOTAL_EVENTS_%%",
+                            db.count_keys().separate_with_commas().as_str(),
+                        ),
                     ))
                     .unwrap())
             })

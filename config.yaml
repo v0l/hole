@@ -12,3 +12,6 @@ relays:
 
 # Filter event kinds to store in archives
 # kinds: [0,1,3,10002]
+
+# Sync events from relays using negentropy
+# sync: true

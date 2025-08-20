@@ -13,6 +13,7 @@ use std::fs::create_dir_all;
 use std::io::{Error, ErrorKind};
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio::sync::Mutex;
 
 #[derive(Clone)]
@@ -20,6 +21,7 @@ pub struct FlatFileDatabase {
     out_dir: PathBuf,
     database: sled::Db,
     file: Arc<Mutex<FlatFileWriter>>,
+    item_count: Arc<AtomicUsize>,
 }
 
 impl Debug for FlatFileDatabase {
@@ -41,6 +43,7 @@ impl FlatFileDatabase {
         let db = sled::open(dir.join("index"))?;
         Ok(Self {
             out_dir: dir.clone(),
+            item_count: Arc::new(AtomicUsize::new(db.len())),
             database: db,
             file: Arc::new(Mutex::new(FlatFileWriter {
                 dir,
@@ -106,6 +109,10 @@ impl FlatFileDatabase {
             })
             .collect()
     }
+
+    pub fn count_keys(&self) -> u64 {
+        self.item_count.load(Ordering::SeqCst) as u64
+    }
 }
 
 impl NostrDatabase for FlatFileDatabase {
@@ -127,6 +134,7 @@ impl NostrDatabase for FlatFileDatabase {
                     self.write_event(event).await.map_err(|e| {
                         DatabaseError::Backend(Box::new(Error::new(ErrorKind::Other, e)))
                     })?;
+                    self.item_count.fetch_add(1, Ordering::SeqCst);
                     debug!("Saved event: {}", event.id);
                     Ok(SaveEventStatus::Success)
                 }
