@@ -9,15 +9,15 @@ use hyper_util::rt::TokioIo;
 use log::{error, info};
 use nostr_relay_builder::builder::RateLimit;
 use nostr_relay_builder::prelude::Kind;
-use nostr_relay_builder::prelude::NostrEventsDatabase;
 use nostr_relay_builder::{LocalRelay, RelayBuilder};
-use nostr_sdk::prelude::{ReqExitPolicy, StreamExt};
-use nostr_sdk::Client;
+use nostr_sdk::prelude::NostrDatabase;
+use nostr_sdk::{Client, Filter, RelayPoolNotification};
 use serde::Deserialize;
 use std::net::SocketAddr;
 use std::path::PathBuf;
-use std::time::Duration;
 use tokio::net::TcpListener;
+use tokio::sync::broadcast::error::RecvError;
+use tokio::task::JoinHandle;
 
 mod db;
 mod http;
@@ -45,7 +45,7 @@ struct Settings {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    pretty_env_logger::init();
+    env_logger::init();
 
     let args = Args::parse();
 
@@ -69,22 +69,32 @@ async fn main() -> Result<()> {
             client.add_relay(r).await?;
         }
         client.connect().await;
-        let never = Duration::from_secs(u64::MAX);
-        let mut stream = client
-            .pool()
-            .stream_events(
-                nostr_sdk::Filter::new().limit(100),
-                never,
-                ReqExitPolicy::WaitDurationAfterEOSE(never),
-            )
-            .await?;
+        let client = client.clone();
         let db = db.clone();
-        tokio::spawn(async move {
-            while let Some(event) = stream.next().await {
-                if let Err(e) = db.save_event(&event).await {
-                    error!("Failed to save event: {}", e);
+        let _: JoinHandle<Result<()>> = tokio::spawn(async move {
+            let mut rx = client.notifications();
+            client.subscribe(Filter::new().limit(100), None).await?;
+            loop {
+                match rx.recv().await {
+                    Ok(e) => match e {
+                        RelayPoolNotification::Event { event, .. } => {
+                            if let Err(e) = db.save_event(&event).await {
+                                error!("Failed to save event: {}", e);
+                            }
+                        }
+                        RelayPoolNotification::Message { .. } => {}
+                        RelayPoolNotification::Shutdown => {}
+                    },
+                    Err(e) => {
+                        error!("Client error notification: {}", e);
+                        if matches!(e, RecvError::Closed) {
+                            break;
+                        }
+                    }
                 }
             }
+            error!("Read loop exited!");
+            Ok(())
         });
     }
 

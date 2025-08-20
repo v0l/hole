@@ -2,7 +2,7 @@ use anyhow::Result;
 use async_compression::tokio::write::ZstdEncoder;
 use chrono::{DateTime, Utc};
 use log::{error, info};
-use nostr::{Event, JsonUtil};
+use nostr_sdk::{Event, JsonUtil};
 use std::path::PathBuf;
 use tokio::fs::{File, OpenOptions};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -81,7 +81,7 @@ impl FlatFileWriter {
             ));
         }
 
-        if let Some((_path, ref mut handle)) = self.current_handle.as_mut() {
+        if let Some((_path, handle)) = self.current_handle.as_mut() {
             handle.write_all(ev.as_json().as_bytes()).await?;
             handle.write(b"\n").await?;
         }

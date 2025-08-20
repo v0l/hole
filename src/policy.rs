@@ -1,6 +1,6 @@
-use nostr::prelude::BoxedFuture;
-use nostr::{Event, Filter, Kind};
 use nostr_relay_builder::prelude::{PolicyResult, QueryPolicy, WritePolicy};
+use nostr_sdk::prelude::BoxedFuture;
+use nostr_sdk::{Event, Filter, Kind};
 use std::collections::HashSet;
 use std::net::SocketAddr;
 
@@ -8,7 +8,7 @@ use std::net::SocketAddr;
 pub struct NoQuery;
 
 impl QueryPolicy for NoQuery {
-    fn admit_query(&self, _query: &Filter, _addr: &SocketAddr) -> BoxedFuture<PolicyResult> {
+    fn admit_query(&self, _query: &Filter, _addr: &SocketAddr) -> BoxedFuture<'_, PolicyResult> {
         Box::pin(async move { PolicyResult::Reject("queries not allowed".to_string()) })
     }
 }

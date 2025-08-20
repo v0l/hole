@@ -8,10 +8,9 @@ use hyper::{Request, Response};
 use hyper_util::rt::TokioIo;
 use itertools::Itertools;
 use log::error;
-use nostr::hashes::sha1::Hash as Sha1Hash;
-use nostr::hashes::{Hash, HashEngine};
 use nostr_relay_builder::LocalRelay;
 use nostr_sdk::prelude::StreamExt;
+use sha1::Digest;
 use std::future::Future;
 use std::net::SocketAddr;
 use std::pin::Pin;
@@ -34,11 +33,10 @@ pub fn derive_accept_key(request_key: &[u8]) -> String {
     // ... field is constructed by concatenating /key/ ...
     // ... with the string "258EAFA5-E914-47DA-95CA-C5AB0DC85B11" (RFC 6455)
     const WS_GUID: &[u8] = b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
-    let mut engine = Sha1Hash::engine();
-    engine.input(request_key);
-    engine.input(WS_GUID);
-    let hash: Sha1Hash = Sha1Hash::from_engine(engine);
-    BASE64_STANDARD.encode(hash)
+    let mut content = Vec::new();
+    content.extend_from_slice(request_key);
+    content.extend_from_slice(WS_GUID);
+    BASE64_STANDARD.encode(sha1::Sha1::digest(&content))
 }
 
 impl HttpServer {

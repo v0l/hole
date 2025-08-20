@@ -2,13 +2,12 @@ use crate::writer::FlatFileWriter;
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Utc};
 use log::debug;
-use nostr::prelude::{BoxedFuture, CoordinateBorrow};
-use nostr::{Event, EventId, Filter, Timestamp};
-use nostr_relay_builder::prelude::NostrDatabaseWipe;
+use nostr_relay_builder::prelude::BoxedFuture;
 use nostr_sdk::prelude::{
-    Backend, DatabaseError, DatabaseEventStatus, Events, NostrDatabase, NostrEventsDatabase,
-    RejectedReason, SaveEventStatus,
+    Backend, DatabaseError, DatabaseEventStatus, Events, NostrDatabase, RejectedReason,
+    SaveEventStatus,
 };
+use nostr_sdk::{Event, EventId, Filter};
 use std::fmt::{Debug, Formatter};
 use std::fs::create_dir_all;
 use std::io::{Error, ErrorKind};
@@ -89,7 +88,11 @@ impl FlatFileDatabase {
     }
 }
 
-impl NostrEventsDatabase for FlatFileDatabase {
+impl NostrDatabase for FlatFileDatabase {
+    fn backend(&self) -> Backend {
+        Backend::Custom("FlatFileDatabase".to_owned())
+    }
+
     fn save_event<'a>(
         &'a self,
         event: &'a Event,
@@ -129,42 +132,26 @@ impl NostrEventsDatabase for FlatFileDatabase {
         })
     }
 
-    fn has_coordinate_been_deleted(
-        &self,
-        _coordinate: &CoordinateBorrow,
-        _timestamp: &Timestamp,
-    ) -> BoxedFuture<Result<bool, DatabaseError>> {
-        Box::pin(async move { Ok(false) })
-    }
-
     fn event_by_id(
         &self,
         _event_id: &EventId,
-    ) -> BoxedFuture<Result<Option<Event>, DatabaseError>> {
+    ) -> BoxedFuture<'_, Result<Option<Event>, DatabaseError>> {
         Box::pin(async move { Ok(None) })
     }
 
-    fn count(&self, _filters: Filter) -> BoxedFuture<Result<usize, DatabaseError>> {
+    fn count(&self, _filters: Filter) -> BoxedFuture<'_, Result<usize, DatabaseError>> {
         Box::pin(async move { Ok(0) })
     }
 
-    fn query(&self, filter: Filter) -> BoxedFuture<Result<Events, DatabaseError>> {
+    fn query(&self, filter: Filter) -> BoxedFuture<'_, Result<Events, DatabaseError>> {
         Box::pin(async move { Ok(Events::new(&filter)) })
     }
 
-    fn delete(&self, _filter: Filter) -> BoxedFuture<Result<(), DatabaseError>> {
+    fn delete(&self, _filter: Filter) -> BoxedFuture<'_, Result<(), DatabaseError>> {
         Box::pin(async move { Ok(()) })
     }
-}
 
-impl NostrDatabaseWipe for FlatFileDatabase {
-    fn wipe(&self) -> BoxedFuture<Result<(), DatabaseError>> {
+    fn wipe(&self) -> BoxedFuture<'_, nostr_relay_builder::prelude::Result<(), DatabaseError>> {
         Box::pin(async move { Ok(()) })
-    }
-}
-
-impl NostrDatabase for FlatFileDatabase {
-    fn backend(&self) -> Backend {
-        Backend::Custom("FlatFileDatabase".to_string())
     }
 }
