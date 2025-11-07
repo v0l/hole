@@ -92,7 +92,8 @@ impl FlatFileWriter {
     pub fn parse_timestamp(path: &Path) -> Option<DateTime<Utc>> {
         path.file_stem()
             .and_then(|stem| stem.to_str())
-            .and_then(|s| s.split('_').next_back())
+            .and_then(|s| s.split('_').next_back()) // split events_{date}
+            .and_then(|s| s.split('.').next()) // remove any more extensions
             .and_then(|s| match NaiveDate::parse_from_str(s, Self::EVENT_FORMAT) {
                 Ok(n) => Some(n),
                 Err(e) => {
