@@ -1,6 +1,6 @@
 use crate::db::FlatFileDatabase;
 use crate::http::HttpServer;
-use crate::policy::{KindPolicy, NoQuery};
+use crate::policy::{EphemeralPolicy, KindPolicy, NoQuery};
 use anyhow::Result;
 use clap::Parser;
 use config::Config;
@@ -143,6 +143,7 @@ async fn main() -> Result<()> {
     let mut builder = RelayBuilder::default()
         .database(db.clone())
         .query_policy(NoQuery)
+        .write_policy(EphemeralPolicy)
         .rate_limit(RateLimit {
             max_reqs: 20,
             notes_per_minute: 100_000,
@@ -152,7 +153,7 @@ async fn main() -> Result<()> {
             k.iter().map(|k| Kind::Custom(*k as u16)).collect(),
         ));
     }
-    let relay = LocalRelay::new(builder).await?;
+    let relay = LocalRelay::new(builder);
 
     let listener = TcpListener::bind(&addr).await?;
     info!("Listening on {}", &addr);

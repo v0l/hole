@@ -128,7 +128,7 @@ impl NostrDatabase for FlatFileDatabase {
             match self.check_id(&event.id).await? {
                 DatabaseEventStatus::NotExistent => {
                     self.database
-                        .insert(event.id, &event.created_at.as_u64().to_le_bytes())
+                        .insert(event.id, &event.created_at.as_secs().to_le_bytes())
                         .map_err(|e| DatabaseError::Backend(Box::new(e)))?;
 
                     self.write_event(event).await.map_err(|e| {

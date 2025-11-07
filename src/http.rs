@@ -123,7 +123,7 @@ impl Service<Request<Incoming>> for HttpServer {
             let template = include_str!("./index.html");
             let db = self.db.clone();
             Box::pin(async move {
-                let files: Vec<String> = db
+                let files: Vec<(u64, String)> = db
                     .list_files()
                     .await
                     .unwrap()
@@ -131,12 +131,7 @@ impl Service<Request<Incoming>> for HttpServer {
                     .sorted_by(|a, b| b.created.cmp(&a.created))
                     .map(|f| {
                         let name = f.path.file_name().unwrap().to_str().unwrap();
-                        format!(
-                            "<a href=\"{}\">{} ({}M)</a>",
-                            name,
-                            name,
-                            f.size / 1024 / 1024
-                        )
+                        (f.size, String::from(name))
                     })
                     .collect();
 
@@ -144,10 +139,36 @@ impl Service<Request<Incoming>> for HttpServer {
                     .status(200)
                     .header("content-type", "text/html")
                     .body(Either::Left(
-                        template.replace("%%_LINKS_%%", &files.join("\n")).replace(
-                            "%%_TOTAL_EVENTS_%%",
-                            db.count_keys().separate_with_commas().as_str(),
-                        ),
+                        template
+                            .replace(
+                                "%%_LINKS_%%",
+                                &files
+                                    .iter()
+                                    .map(|f| {
+                                        format!(
+                                            "<a href=\"{}\">{} ({:.2} MiB)</a>",
+                                            f.1,
+                                            f.1,
+                                            f.0 as f64 / 1024. / 1024.
+                                        )
+                                    })
+                                    .collect::<Vec<_>>()
+                                    .join("\n"),
+                            )
+                            .replace(
+                                "%%_TOTAL_EVENTS_%%",
+                                db.count_keys().separate_with_commas().as_str(),
+                            )
+                            .replace(
+                                "%%_TOTAL_SIZE_%%",
+                                &format!(
+                                    "{:.3} GiB",
+                                    files.iter().fold(0u64, |acc, v| acc + v.0) as f64
+                                        / 1024.0
+                                        / 1024.0
+                                        / 1024.0
+                                ),
+                            ),
                     ))
                     .unwrap())
             })

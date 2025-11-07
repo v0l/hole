@@ -37,3 +37,21 @@ impl WritePolicy for KindPolicy {
         })
     }
 }
+
+#[derive(Debug)]
+pub struct EphemeralPolicy;
+impl WritePolicy for EphemeralPolicy {
+    fn admit_event<'a>(
+        &'a self,
+        event: &'a Event,
+        _addr: &'a SocketAddr,
+    ) -> BoxedFuture<'a, PolicyResult> {
+        if event.kind.as_u16() >= 20_000 && event.kind.as_u16() < 30_000 {
+            Box::pin(async move {
+                PolicyResult::Reject("Ephemeral events are not accepted".to_string())
+            })
+        } else {
+            Box::pin(async move { PolicyResult::Accept })
+        }
+    }
+}
