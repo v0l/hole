@@ -1,9 +1,9 @@
 use anyhow::Result;
 use async_compression::tokio::write::ZstdEncoder;
-use chrono::{DateTime, Utc};
-use log::{error, info};
+use chrono::{DateTime, NaiveDate, Utc};
+use log::{error, info, warn};
 use nostr_sdk::{Event, JsonUtil};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tokio::fs::{File, OpenOptions};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
@@ -14,6 +14,8 @@ pub struct FlatFileWriter {
 }
 
 impl FlatFileWriter {
+    pub const EVENT_FORMAT: &'static str = "%Y%m%d";
+
     /// Spawn a task to compress a file
     async fn compress_file(file: PathBuf) -> Result<()> {
         let out_path = file.with_extension("jsonl.zstd");
@@ -46,10 +48,9 @@ impl FlatFileWriter {
 
     /// Write event to the current file handle, or move to the next file handle
     pub(crate) async fn write_event(&mut self, ev: &Event) -> Result<()> {
-        const EVENT_FORMAT: &str = "%Y%m%d";
         let now = Utc::now();
-        if self.current_date.format(EVENT_FORMAT).to_string()
-            != now.format(EVENT_FORMAT).to_string()
+        if self.current_date.format(Self::EVENT_FORMAT).to_string()
+            != now.format(Self::EVENT_FORMAT).to_string()
         {
             if let Some((path, ref mut handle)) = self.current_handle.take() {
                 handle.flush().await?;
@@ -68,7 +69,7 @@ impl FlatFileWriter {
         if self.current_handle.is_none() {
             let path = self.dir.join(format!(
                 "events_{}.jsonl",
-                self.current_date.format(EVENT_FORMAT)
+                self.current_date.format(Self::EVENT_FORMAT)
             ));
             info!("Creating file {:?}", &path);
             self.current_handle = Some((
@@ -86,5 +87,20 @@ impl FlatFileWriter {
             handle.write(b"\n").await?;
         }
         Ok(())
+    }
+
+    pub fn parse_timestamp(path: &Path) -> Option<DateTime<Utc>> {
+        path.file_stem()
+            .and_then(|stem| stem.to_str())
+            .and_then(|s| s.split('_').next_back())
+            .and_then(|s| match NaiveDate::parse_from_str(s, Self::EVENT_FORMAT) {
+                Ok(n) => Some(n),
+                Err(e) => {
+                    warn!("Failed to parse timestamp from {}: {}", path.display(), e);
+                    None
+                }
+            })
+            .and_then(|d| d.and_hms_opt(0, 0, 0))
+            .map(|d| d.and_utc())
     }
 }

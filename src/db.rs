@@ -35,6 +35,8 @@ pub struct ArchiveFile {
     pub path: PathBuf,
     pub size: u64,
     pub created: DateTime<Utc>,
+    /// The actual date of the file
+    pub timestamp: DateTime<Utc>,
 }
 
 impl FlatFileDatabase {
@@ -65,11 +67,18 @@ impl FlatFileDatabase {
                 continue;
             }
 
+            let parsed_date = if let Some(d) = FlatFileWriter::parse_timestamp(&entry.path()) {
+                d
+            } else {
+                continue;
+            };
+
             let meta = entry.metadata().await?;
             files.push(ArchiveFile {
                 path: entry.path(),
                 size: meta.len(),
                 created: meta.created()?.into(),
+                timestamp: parsed_date,
             });
         }
         Ok(files)
@@ -80,10 +89,13 @@ impl FlatFileDatabase {
         let p = self.out_dir.join(&path[1..]);
         if p.exists() && p.is_file() {
             let meta = p.metadata()?;
+            let parsed_date =
+                FlatFileWriter::parse_timestamp(&p).ok_or(anyhow!("Filename invalid"))?;
             Ok(ArchiveFile {
                 path: p,
                 size: meta.len(),
                 created: meta.created()?.into(),
+                timestamp: parsed_date,
             })
         } else {
             Err(anyhow!("No such file or directory"))
