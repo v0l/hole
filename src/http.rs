@@ -1,4 +1,3 @@
-use crate::db::FlatFileDatabase;
 use base64::prelude::*;
 use http_body_util::Either;
 use hyper::body::{Body, Bytes, Frame, Incoming};
@@ -8,6 +7,7 @@ use hyper::{Request, Response};
 use hyper_util::rt::TokioIo;
 use itertools::Itertools;
 use log::error;
+use nostr_archive_cursor::JsonFilesDatabase;
 use nostr_relay_builder::LocalRelay;
 use nostr_sdk::prelude::StreamExt;
 use sha1::Digest;
@@ -21,7 +21,7 @@ use tokio_util::io::ReaderStream;
 
 pub(crate) struct HttpServer {
     relay: LocalRelay,
-    db: FlatFileDatabase,
+    db: JsonFilesDatabase,
     remote: SocketAddr,
 }
 
@@ -41,7 +41,7 @@ pub fn derive_accept_key(request_key: &[u8]) -> String {
 }
 
 impl HttpServer {
-    pub fn new(relay: LocalRelay, db: FlatFileDatabase, remote: SocketAddr) -> Self {
+    pub fn new(relay: LocalRelay, db: JsonFilesDatabase, remote: SocketAddr) -> Self {
         HttpServer { relay, db, remote }
     }
 }

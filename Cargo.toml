@@ -5,13 +5,10 @@ edition = "2024"
 
 [dependencies]
 anyhow = "1.0.99"
-async-compression = { version = "0.4.27", features = ["tokio", "zstd"] }
-chrono = "0.4.41"
 clap = { version = "4.5.45", features = ["derive"] }
 config = { version = "0.15.14", features = ["yaml"] }
 log = "0.4.27"
 env_logger = "0.11.8"
-sled = "0.34.7"
 tokio = { version = "1.47.1", features = ["macros", "fs", "rt", "rt-multi-thread"] }
 serde = { version = "1.0.219", features = ["derive"] }
 hyper = { version = "1.7", features = ["server", "http1"] }
@@ -24,3 +21,4 @@ nostr-sdk = "0.44.0"
 http-body-util = "0.1.3"
 tokio-util = { version = "0.7.16", features = ["io"] }
 thousands = "0.2.0"
+nostr-archive-cursor = "0.2"

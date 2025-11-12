@@ -1,4 +1,3 @@
-use crate::db::FlatFileDatabase;
 use crate::http::HttpServer;
 use crate::policy::{EphemeralPolicy, KindPolicy, NoQuery};
 use anyhow::Result;
@@ -7,6 +6,7 @@ use config::Config;
 use hyper::server::conn::http1;
 use hyper_util::rt::TokioIo;
 use log::{error, info};
+use nostr_archive_cursor::JsonFilesDatabase;
 use nostr_relay_builder::builder::RateLimit;
 use nostr_relay_builder::prelude::Kind;
 use nostr_relay_builder::{LocalRelay, RelayBuilder};
@@ -19,10 +19,8 @@ use tokio::net::TcpListener;
 use tokio::sync::broadcast::error::RecvError;
 use tokio::task::JoinHandle;
 
-mod db;
 mod http;
 mod policy;
-mod writer;
 
 #[derive(Parser)]
 #[command(version, about)]
@@ -65,7 +63,7 @@ async fn main() -> Result<()> {
         .map(|a| a.parse())
         .unwrap_or(Ok(SocketAddr::from(([0, 0, 0, 0], 8001))))?;
 
-    let db = FlatFileDatabase::new(out_dir.clone())?;
+    let db = JsonFilesDatabase::new(out_dir.clone())?;
     let client = Client::builder().database(db.clone()).build();
     if let Some(r) = config.relays {
         for r in &r {
