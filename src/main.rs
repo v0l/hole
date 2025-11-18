@@ -10,8 +10,8 @@ use nostr_archive_cursor::JsonFilesDatabase;
 use nostr_relay_builder::builder::RateLimit;
 use nostr_relay_builder::prelude::Kind;
 use nostr_relay_builder::{LocalRelay, RelayBuilder};
-use nostr_sdk::prelude::{NostrDatabase, SyncProgress};
-use nostr_sdk::{Client, Filter, RelayPoolNotification, SyncOptions};
+use nostr_sdk::prelude::NostrDatabase;
+use nostr_sdk::{Client, Filter, RelayPoolNotification};
 use serde::Deserialize;
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -39,9 +39,6 @@ struct Settings {
 
     /// Nostr kinds to accept
     pub kinds: Option<Vec<u32>>,
-
-    /// Do sync at startup to find missing events
-    pub sync: Option<bool>,
 }
 
 #[tokio::main]
@@ -105,37 +102,6 @@ async fn main() -> Result<()> {
             error!("Read loop exited!");
             Ok(())
         });
-
-        // spawn sync job
-        if config.sync.unwrap_or(false) {
-            let client_sync = client.clone();
-            let db_sync = db.clone();
-            tokio::spawn(async move {
-                let (tx, mut rx) = SyncProgress::channel();
-                tokio::spawn(async move {
-                    while let Ok(_) = rx.changed().await {
-                        let p = rx.borrow();
-                        info!(
-                            "Sync progress: {}/{} {:.2}%",
-                            p.current,
-                            p.total,
-                            100.0 * (p.current as f64 / p.total as f64)
-                        );
-                    }
-                });
-                let opts = SyncOptions::default().progress(tx);
-                let ids = db_sync.list_ids();
-                let targets = client_sync
-                    .relays()
-                    .await
-                    .into_iter()
-                    .map(|r| (r.0, (filter_base.clone(), ids.clone())));
-                if let Err(e) = client_sync.pool().sync_targeted(targets, &opts).await {
-                    error!("Failed to sync: {}", e);
-                }
-                info!("Sync complete!");
-            });
-        }
     }
 
     let mut builder = RelayBuilder::default()
