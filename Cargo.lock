@@ -1323,9 +1323,9 @@ dependencies = [
 
 [[package]]
 name = "nostr-archive-cursor"
-version = "0.3.4"
+version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5ef663f858fb3801e8f40012e24d6a40530b19f5edb7d5206f8c103802267e01"
+checksum = "f61fc5f26110d89fcfb3d336c646e1354ed8a14c977e01acb70b6074581212e4"
 dependencies = [
  "anyhow",
  "async-compression",
