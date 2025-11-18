@@ -60,7 +60,14 @@ async fn main() -> Result<()> {
         .map(|a| a.parse())
         .unwrap_or(Ok(SocketAddr::from(([0, 0, 0, 0], 8001))))?;
 
-    let db = JsonFilesDatabase::new(out_dir.clone())?;
+    let mut db = JsonFilesDatabase::new(out_dir.clone())?;
+
+    // rebuild index if needed
+    if db.is_index_empty() && !db.list_files().await?.is_empty() {
+        info!("Index is empty, rebuilding....");
+        db.rebuild_index().await?;
+    }
+
     let client = Client::builder().database(db.clone()).build();
     if let Some(r) = config.relays {
         for r in &r {
