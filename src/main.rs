@@ -39,6 +39,9 @@ struct Settings {
 
     /// Nostr kinds to accept
     pub kinds: Option<Vec<u32>>,
+
+    /// Path to save data
+    pub out_dir: Option<PathBuf>,
 }
 
 #[tokio::main]
@@ -54,7 +57,7 @@ async fn main() -> Result<()> {
         .build()?
         .try_deserialize()?;
 
-    let out_dir = PathBuf::from("./data");
+    let out_dir = config.out_dir.unwrap_or(PathBuf::from("./data"));
     let addr: SocketAddr = config
         .listen_relay
         .map(|a| a.parse())
@@ -65,7 +68,7 @@ async fn main() -> Result<()> {
     // rebuild index if needed
     if db.is_index_empty() && !db.list_files().await?.is_empty() {
         info!("Index is empty, rebuilding....");
-        db.rebuild_index().await?;
+        db.rebuild_index()?;
     }
 
     let client = Client::builder().database(db.clone()).build();

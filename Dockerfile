@@ -3,6 +3,9 @@ WORKDIR /app/src
 COPY Cargo.toml .
 COPY Cargo.lock .
 COPY src src
+RUN apt-get update && \
+    apt-get install -y librocksdb-dev libclang-dev && \
+    rm -rf /var/lib/apt/lists/*
 RUN cargo install --path . --root /app/build
 
 FROM debian:trixie-slim
@@ -12,4 +15,5 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 COPY --from=build /app/build .
 ENV RUST_LOG=info
+RUN ./bin/nostrhole --version
 ENTRYPOINT ["./bin/nostrhole"]

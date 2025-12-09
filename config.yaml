@@ -15,3 +15,6 @@ relays:
 
 # Sync events from relays using negentropy
 # sync: true
+
+# Path to store files
+out_dir: /media/kieran/c3664949-a92a-4a90-9227-bca2e815eb6b/nostr
