@@ -5,13 +5,13 @@ use clap::Parser;
 use config::Config;
 use hyper::server::conn::http1;
 use hyper_util::rt::TokioIo;
-use log::{error, info};
+use log::{error, info, warn};
 use nostr_archive_cursor::JsonFilesDatabase;
 use nostr_relay_builder::builder::RateLimit;
 use nostr_relay_builder::prelude::Kind;
 use nostr_relay_builder::{LocalRelay, RelayBuilder};
 use nostr_sdk::prelude::NostrDatabase;
-use nostr_sdk::{Client, Filter, RelayPoolNotification};
+use nostr_sdk::{Client, Filter, RelayMessage, RelayPoolNotification, Timestamp};
 use serde::Deserialize;
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -63,7 +63,7 @@ async fn main() -> Result<()> {
         .map(|a| a.parse())
         .unwrap_or(Ok(SocketAddr::from(([0, 0, 0, 0], 8001))))?;
 
-    let mut db = JsonFilesDatabase::new(out_dir.clone())?;
+    let mut db = JsonFilesDatabase::new(&out_dir)?;
 
     // rebuild index if needed
     if db.is_index_empty() && !db.list_files().await?.is_empty() {
@@ -75,6 +75,7 @@ async fn main() -> Result<()> {
     if let Some(r) = config.relays {
         for r in &r {
             client.add_relay(r).await?;
+            info!("Connected to {}", r);
         }
         client.connect().await;
 
@@ -89,7 +90,9 @@ async fn main() -> Result<()> {
         let filter_sub = filter_base.clone();
         let _: JoinHandle<Result<()>> = tokio::spawn(async move {
             let mut rx = client_sub.notifications();
-            client_sub.subscribe(filter_sub.limit(100), None).await?;
+            client_sub
+                .subscribe(filter_sub.since(Timestamp::now()), None)
+                .await?;
             loop {
                 match rx.recv().await {
                     Ok(e) => match e {
@@ -98,8 +101,13 @@ async fn main() -> Result<()> {
                                 error!("Failed to save event: {}", e);
                             }
                         }
-                        RelayPoolNotification::Message { .. } => {}
-                        RelayPoolNotification::Shutdown => {}
+                        RelayPoolNotification::Message { message, relay_url } => match message {
+                            RelayMessage::Notice(m) => warn!("{}: {}", relay_url, m),
+                            _ => {}
+                        },
+                        RelayPoolNotification::Shutdown => {
+                            info!("Shutting down...");
+                        }
                     },
                     Err(e) => {
                         error!("Client error notification: {}", e);
