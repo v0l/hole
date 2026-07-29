@@ -1,5 +1,5 @@
 use crate::http::HttpServer;
-use crate::policy::{EphemeralPolicy, KindPolicy, NoQuery};
+use crate::policy::{KindPolicy, NoQuery};
 use anyhow::Result;
 use clap::Parser;
 use config::Config;
@@ -86,9 +86,26 @@ async fn main() -> Result<()> {
         }
         client.connect().await;
 
+        // Build the upstream ingest filter. Ephemeral kinds (20000-29999) must never be
+        // archived (NIP-01: relays are not expected to store them), so exclude that range.
+        // Nostr filters are inclusive-only, so we enumerate all non-ephemeral kinds.
+        let non_ephemeral_kinds = || {
+            (0u16..20_000)
+                .chain(30_000..=u16::MAX)
+                .map(Kind::Custom)
+                .collect::<Vec<_>>()
+        };
         let mut filter_base = Filter::default();
         if let Some(k) = &config.kinds {
-            filter_base = filter_base.kinds(k.iter().map(|v| Kind::Custom(*v as u16)))
+            // Explicit whitelist: keep configured kinds, but still drop any ephemeral ones.
+            filter_base = filter_base.kinds(
+                k.iter()
+                    .map(|v| Kind::Custom(*v as u16))
+                    .filter(|kind| !kind.is_ephemeral()),
+            );
+        } else {
+            // No whitelist: archive everything except ephemeral kinds.
+            filter_base = filter_base.kinds(non_ephemeral_kinds());
         }
 
         // spawn main ingester
@@ -130,7 +147,6 @@ async fn main() -> Result<()> {
     let mut builder = RelayBuilder::default()
         .database(db.clone())
         .query_policy(NoQuery)
-        .write_policy(EphemeralPolicy)
         .rate_limit(RateLimit {
             max_reqs: 20,
             notes_per_minute: 100_000,
