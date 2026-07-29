@@ -1434,7 +1434,7 @@ dependencies = [
 [[package]]
 name = "nostr-archive-cursor"
 version = "0.5.1"
-source = "git+https://github.com/v0l/nostr-archive-cursor.git?rev=79cbcc7#79cbcc7979a561751d1ba1cfb0025525e2fa9b08"
+source = "git+https://github.com/v0l/nostr-archive-cursor.git?rev=40fccba#40fccba8292027af63a1faea36b346011e67a2e9"
 dependencies = [
  "anyhow",
  "async-compression",
