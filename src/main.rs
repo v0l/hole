@@ -6,11 +6,11 @@ use config::Config;
 use hyper::server::conn::http1;
 use hyper_util::rt::TokioIo;
 use log::{error, info, warn};
-use nostr_archive_cursor::JsonFilesDatabase;
+use nostr_archive_cursor::DefaultJsonFilesDatabase;
 use nostr_relay_builder::builder::RateLimit;
 use nostr_relay_builder::prelude::Kind;
 use nostr_relay_builder::{LocalRelay, RelayBuilder};
-use nostr_sdk::prelude::NostrDatabase;
+
 use nostr_sdk::{Client, Filter, RelayMessage, RelayPoolNotification, Timestamp};
 use serde::Deserialize;
 use std::net::SocketAddr;
@@ -63,12 +63,19 @@ async fn main() -> Result<()> {
         .map(|a| a.parse())
         .unwrap_or(Ok(SocketAddr::from(([0, 0, 0, 0], 8001))))?;
 
-    let mut db = JsonFilesDatabase::new(&out_dir)?;
+    let db = DefaultJsonFilesDatabase::new(&out_dir)?;
 
-    // rebuild index if needed
+    // rebuild index if needed (in background so we don't block startup)
     if db.is_index_empty() && !db.list_files().await?.is_empty() {
-        info!("Index is empty, rebuilding....");
-        db.rebuild_index()?;
+        info!("Index is empty, rebuilding in background...");
+        let mut db_rebuild = db.clone();
+        std::thread::spawn(move || {
+            if let Err(e) = db_rebuild.rebuild_index() {
+                error!("Failed to rebuild index: {}", e);
+            } else {
+                info!("Index rebuild complete");
+            }
+        });
     }
 
     let client = Client::builder().database(db.clone()).build();
@@ -86,7 +93,6 @@ async fn main() -> Result<()> {
 
         // spawn main ingester
         let client_sub = client.clone();
-        let db_sub = db.clone();
         let filter_sub = filter_base.clone();
         let _: JoinHandle<Result<()>> = tokio::spawn(async move {
             let mut rx = client_sub.notifications();
@@ -95,20 +101,15 @@ async fn main() -> Result<()> {
                 .await?;
             loop {
                 match rx.recv().await {
-                    Ok(e) => match e {
-                        RelayPoolNotification::Event { event, .. } => {
-                            if let Err(e) = db_sub.save_event(&event).await {
-                                error!("Failed to save event: {}", e);
-                            }
+                    Ok(RelayPoolNotification::Message { message, relay_url }) => {
+                        if let RelayMessage::Notice(m) = message {
+                            warn!("{}: {}", relay_url, m);
                         }
-                        RelayPoolNotification::Message { message, relay_url } => match message {
-                            RelayMessage::Notice(m) => warn!("{}: {}", relay_url, m),
-                            _ => {}
-                        },
-                        RelayPoolNotification::Shutdown => {
-                            info!("Shutting down...");
-                        }
-                    },
+                    }
+                    Ok(RelayPoolNotification::Shutdown) => {
+                        info!("Shutting down...");
+                    }
+                    Ok(_) => {}
                     Err(e) => {
                         error!("Client error notification: {}", e);
                         if matches!(e, RecvError::Closed) {
@@ -120,6 +121,10 @@ async fn main() -> Result<()> {
             error!("Read loop exited!");
             Ok(())
         });
+        
+        // Note: Events are automatically saved by the Client's database integration
+        // (nostr-relay-pool calls db.save_event() for verified events before emitting notifications)
+        // We removed the duplicate save_event() call above to avoid double work.
     }
 
     let mut builder = RelayBuilder::default()
