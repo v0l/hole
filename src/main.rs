@@ -27,6 +27,12 @@ mod policy;
 struct Args {
     /// Define path for config file
     pub config: Option<PathBuf>,
+
+    /// Recompute the event index count from the actual data and persist it, then exit.
+    /// Use to repair a stale/incorrect cached count (e.g. after a concurrent rollout
+    /// left the persisted count wrong). This is an O(n) scan over the index.
+    #[arg(long)]
+    pub repair_count: bool,
 }
 
 #[derive(Deserialize)]
@@ -64,6 +70,14 @@ async fn main() -> Result<()> {
         .unwrap_or(Ok(SocketAddr::from(([0, 0, 0, 0], 8001))))?;
 
     let db = DefaultJsonFilesDatabase::new(&out_dir)?;
+
+    // One-shot count repair: rescan the index, fix the persisted count, and exit.
+    if args.repair_count {
+        info!("Repairing event index count (O(n) scan)...");
+        let n = db.repair_count()?;
+        info!("Repaired event index count: {}", n);
+        return Ok(());
+    }
 
     // rebuild index if needed (in background so we don't block startup)
     if db.is_index_empty() && !db.list_files().await?.is_empty() {

@@ -21,4 +21,4 @@ nostr-sdk = "0.44.0"
 http-body-util = "0.1.3"
 tokio-util = { version = "0.7.16", features = ["io"] }
 thousands = "0.2.0"
-nostr-archive-cursor = { git = "https://github.com/v0l/nostr-archive-cursor.git", rev = "9e0b3e4", features = ["db-rocksdb", "sync"], default-features = false }
+nostr-archive-cursor = { git = "https://github.com/v0l/nostr-archive-cursor.git", rev = "79cbcc7", features = ["db-rocksdb", "sync"], default-features = false }
