@@ -21,6 +21,7 @@ use tokio::task::JoinHandle;
 
 mod http;
 mod policy;
+mod prune;
 
 #[derive(Parser)]
 #[command(version, about)]
@@ -33,6 +34,11 @@ struct Args {
     /// left the persisted count wrong). This is an O(n) scan over the index.
     #[arg(long)]
     pub repair_count: bool,
+
+    /// Prune ephemeral events (kind 20000-29999) from completed archive files by
+    /// rewriting them, rebuild the index, then exit. Today's active file is skipped.
+    #[arg(long)]
+    pub prune_ephemeral: bool,
 }
 
 #[derive(Deserialize)]
@@ -76,6 +82,15 @@ async fn main() -> Result<()> {
         info!("Repairing event index count (O(n) scan)...");
         let n = db.repair_count()?;
         info!("Repaired event index count: {}", n);
+        return Ok(());
+    }
+
+    // One-shot ephemeral prune: rewrite completed archives without ephemeral events,
+    // rebuild the index, and exit.
+    if args.prune_ephemeral {
+        info!("Pruning ephemeral events from completed archives...");
+        let dropped = prune::prune_ephemeral(&db).await?;
+        info!("Prune finished: {} ephemeral events removed", dropped);
         return Ok(());
     }
 

@@ -1434,7 +1434,7 @@ dependencies = [
 [[package]]
 name = "nostr-archive-cursor"
 version = "0.5.1"
-source = "git+https://github.com/v0l/nostr-archive-cursor.git?rev=40fccba#40fccba8292027af63a1faea36b346011e67a2e9"
+source = "git+https://github.com/v0l/nostr-archive-cursor.git?rev=6e0f316#6e0f316ad1b9811f5597b72b21fc17b178f36568"
 dependencies = [
  "anyhow",
  "async-compression",
@@ -1528,6 +1528,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "base64",
+ "chrono",
  "clap",
  "config",
  "env_logger",
@@ -1540,10 +1541,12 @@ dependencies = [
  "nostr-relay-builder",
  "nostr-sdk",
  "serde",
+ "serde_json",
  "sha1",
  "thousands",
  "tokio",
  "tokio-util",
+ "zstd",
 ]
 
 [[package]]
