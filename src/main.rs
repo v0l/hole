@@ -39,6 +39,12 @@ struct Args {
     /// rewriting them, rebuild the index, then exit. Today's active file is skipped.
     #[arg(long)]
     pub prune_ephemeral: bool,
+
+    /// Wipe and fully rebuild the event index from all archive files, then exit.
+    /// Use when the index is out of sync with the archives (e.g. missing historical
+    /// events). This is an O(n) scan over every archive file and re-inserts all ids.
+    #[arg(long)]
+    pub rebuild_index: bool,
 }
 
 #[derive(Deserialize)]
@@ -77,25 +83,37 @@ async fn main() -> Result<()> {
 
     let db = DefaultJsonFilesDatabase::new(&out_dir)?;
 
-    // One-shot count repair: rescan the index, fix the persisted count, and exit.
+    // Optional startup maintenance jobs. Each runs to completion, then normal relay
+    // startup continues (no separate restart needed).
+
+    // Repair the cached event count, then continue.
     if args.repair_count {
         info!("Repairing event index count (O(n) scan)...");
         let n = db.repair_count()?;
         info!("Repaired event index count: {}", n);
-        return Ok(());
     }
 
-    // One-shot ephemeral prune: rewrite completed archives without ephemeral events,
-    // rebuild the index, and exit.
+    // Prune ephemeral events from completed archives (also rebuilds the index), then
+    // continue.
     if args.prune_ephemeral {
         info!("Pruning ephemeral events from completed archives...");
         let dropped = prune::prune_ephemeral(&db).await?;
         info!("Prune finished: {} ephemeral events removed", dropped);
-        return Ok(());
+    }
+
+    // Full index rebuild from all archive files, then continue. Tracks whether we
+    // already rebuilt so the background auto-rebuild below doesn't run redundantly.
+    let mut index_rebuilt = false;
+    if args.rebuild_index {
+        info!("Rebuilding event index from all archive files (O(n) scan)...");
+        let mut db_rebuild = db.clone();
+        db_rebuild.rebuild_index()?;
+        index_rebuilt = true;
+        info!("Index rebuild complete: {} events indexed", db.count_keys());
     }
 
     // rebuild index if needed (in background so we don't block startup)
-    if db.is_index_empty() && !db.list_files().await?.is_empty() {
+    if !index_rebuilt && db.is_index_empty() && !db.list_files().await?.is_empty() {
         info!("Index is empty, rebuilding in background...");
         let mut db_rebuild = db.clone();
         std::thread::spawn(move || {
