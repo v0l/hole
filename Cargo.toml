@@ -24,4 +24,4 @@ thousands = "0.2.0"
 zstd = "0.13"
 chrono = "0.4"
 serde_json = "1.0"
-nostr-archive-cursor = { git = "https://github.com/v0l/nostr-archive-cursor.git", rev = "6e0f316", features = ["db-rocksdb", "sync"], default-features = false }
+nostr-archive-cursor = { git = "https://github.com/v0l/nostr-archive-cursor.git", rev = "359888c", features = ["db-rocksdb", "sync"], default-features = false }
