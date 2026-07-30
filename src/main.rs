@@ -40,6 +40,12 @@ struct Args {
     #[arg(long)]
     pub prune_ephemeral: bool,
 
+    /// Report event counts (and read errors) per archive file, then continue.
+    /// Read-only diagnostic: shows where events actually live and which files stop
+    /// early on a truncated frame.
+    #[arg(long)]
+    pub stats: bool,
+
     /// Wipe and fully rebuild the event index from all archive files, then exit.
     /// Use when the index is out of sync with the archives (e.g. missing historical
     /// events). This is an O(n) scan over every archive file and re-inserts all ids.
@@ -91,6 +97,12 @@ async fn main() -> Result<()> {
         info!("Repairing event index count (O(n) scan)...");
         let n = db.repair_count()?;
         info!("Repaired event index count: {}", n);
+    }
+
+    // Read-only archive stats.
+    if args.stats {
+        info!("Scanning archive files...");
+        prune::archive_stats(&db).await?;
     }
 
     // Prune ephemeral events from completed archives (also rebuilds the index), then
